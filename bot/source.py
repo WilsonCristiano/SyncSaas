@@ -12,8 +12,8 @@ def scrape_reels(username: str, limit: int) -> list[dict]:
     """1 execução por perfil: o erro de cada fonte fica isolado."""
     client = ApifyClient(APIFY_TOKEN)
     run = client.actor(ACTOR).call(run_input={"username": [username], "resultsLimit": limit})
-    if run.get("status") != "SUCCEEDED":
-        raise RuntimeError(f"Apify terminou com status {run.get('status')}")
+    if run.status != "SUCCEEDED":
+        raise RuntimeError(f"Apify terminou com status {run.status}")
     out = []
     for it in client.dataset(run.default_dataset_id).list_items().items:
         ig_id = it.get("shortCode") or it.id
