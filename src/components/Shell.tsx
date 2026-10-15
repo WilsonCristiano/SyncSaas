@@ -1,10 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
-import { Layers, LayoutGrid, Menu, ScrollText, X } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { AtSign, Layers, LayoutGrid, ListVideo, Menu, ScrollText, SlidersHorizontal, X } from "lucide-react";
 
 const NAV = [
   { href: "/", label: "Visão geral", icon: LayoutGrid },
+  { href: "/fila", label: "Fila", icon: ListVideo },
+  { href: "/fontes", label: "Fontes", icon: AtSign },
+  { href: "/configuracoes", label: "Configurações", icon: SlidersHorizontal },
   { href: "/#logs", label: "Registros", icon: ScrollText },
 ];
 
@@ -20,23 +24,27 @@ function Brand() {
 }
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
+  const path = usePathname();
   return (
     <nav className="mt-8 flex flex-col gap-1" aria-label="Principal">
-      {NAV.map(({ href, label, icon: Icon }, i) => (
+      {NAV.map(({ href, label, icon: Icon }) => {
+        const on = href === path;
+        return (
         <motion.a
           key={href}
           href={href}
           onClick={onNavigate}
           whileHover={{ x: 3 }}
-          aria-current={i === 0 ? "page" : undefined}
+          aria-current={on ? "page" : undefined}
           className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-            i === 0 ? "bg-violet-500/10 text-violet-200" : "text-mute hover:bg-ink-800 hover:text-fog"
+            on ? "bg-violet-500/10 text-violet-200" : "text-mute hover:bg-ink-800 hover:text-fog"
           }`}
         >
           <Icon className="h-4 w-4" aria-hidden />
           {label}
         </motion.a>
-      ))}
+        );
+      })}
     </nav>
   );
 }

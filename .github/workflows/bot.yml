@@ -1,24 +1,39 @@
-name: reelsync-bot
+name: syncsaas-bot
 on:
   repository_dispatch:
-    types: [new-posts]   # disparado por /api/webhook-apify
+    types: [new-posts, scrape]   # new-posts: aprovação/retry (só publica) | scrape: botão "Executar scraping agora"
   workflow_dispatch:
   schedule:
-    - cron: "0 */3 * * *" # rede de segurança: drena a fila mesmo sem webhook
+    - cron: "0 * * * *"          # a cada hora: lê fontes vencidas e publica se a janela anti-spam permitir
 concurrency:
-  group: reelsync-bot
+  group: syncsaas-bot
   cancel-in-progress: false
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
+    env:
+      POSTGRES_URL_NON_POOLING: ${{ secrets.POSTGRES_URL_NON_POOLING }}
+      APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+      CAPTION_TEMPLATE: ${{ vars.CAPTION_TEMPLATE }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12", cache: pip, cache-dependency-path: bot/requirements.txt }
-      - run: pip install -r bot/requirements.txt && playwright install --with-deps chromium
-      - run: python -m bot.main
+      - run: pip install -r bot/requirements.txt
+
+      # 1) Scraping (se aplicável) + verificação barata: há algo publicável agora?
+      - id: chk
+        run: |
+          ARGS="--scrape"
+          if [ "${{ github.event.action }}" = "scrape" ]; then ARGS="--scrape --force"; fi
+          if [ "${{ github.event.action }}" = "new-posts" ]; then ARGS=""; fi
+          python -m bot.main $ARGS --check
+
+      # 2) Só instala o Chromium e publica quando necessário
+      - if: steps.chk.outputs.eligible == 'true'
+        run: playwright install --with-deps chromium
+      - if: steps.chk.outputs.eligible == 'true'
+        run: python -m bot.main
         env:
-          POSTGRES_URL_NON_POOLING: ${{ secrets.POSTGRES_URL_NON_POOLING }}
           TIKTOK_COOKIES: ${{ secrets.TIKTOK_COOKIES }}
-          CAPTION_TEMPLATE: ${{ vars.CAPTION_TEMPLATE }}

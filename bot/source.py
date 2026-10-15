@@ -8,16 +8,18 @@ from .config import APIFY_TOKEN
 
 ACTOR = "apify/instagram-reel-scraper"
 
-def scrape_reels(usernames: list[str], limit: int) -> list[dict]:
+def scrape_reels(username: str, limit: int) -> list[dict]:
+    """1 execução por perfil: o erro de cada fonte fica isolado."""
     client = ApifyClient(APIFY_TOKEN)
-    run = client.actor(ACTOR).call(run_input={"username": usernames, "resultsLimit": limit}, timeout_secs=600)
-    items = client.dataset(run["defaultDatasetId"]).list_items().items
+    run = client.actor(ACTOR).call(run_input={"username": [username], "resultsLimit": limit}, timeout_secs=600)
+    if run.get("status") != "SUCCEEDED":
+        raise RuntimeError(f"Apify terminou com status {run.get('status')}")
     out = []
-    for it in items:
+    for it in client.dataset(run["defaultDatasetId"]).list_items().items:
         ig_id = it.get("shortCode") or it.get("id")
         if ig_id and it.get("videoUrl"):
-            out.append({"ig_id": str(ig_id), "video_url": it["videoUrl"],
-                        "caption": it.get("caption") or "", "source_url": it.get("url")})
+            out.append({"ig_id": str(ig_id), "video_url": it["videoUrl"], "caption": it.get("caption") or "",
+                        "source_url": it.get("url"), "author": (it.get("ownerUsername") or username).lower()})
     return out
 
 def download_video(url: str, ig_id: str) -> Path:

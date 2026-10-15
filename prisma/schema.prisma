@@ -2,26 +2,58 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Vercel Postgres (Neon): Storage > Create > Postgres > Connect Project injeta estas variáveis.
 datasource db {
   provider  = "postgresql"
-  url       = env("POSTGRES_PRISMA_URL")        // pooled (runtime Next.js)
-  directUrl = env("POSTGRES_URL_NON_POOLING")   // direto (db push / bot Python)
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
 enum PostStatus {
+  WAITING_APPROVAL // modo aprovação manual: aguarda clique em "Aprovar"
   PENDING
   RUNNING
   DONE
   FAILED
+  REJECTED
 
   @@map("post_status")
 }
 
-// Nomes snake_case + ids gerados no banco: o bot Python insere via SQL puro.
+// Perfis do Instagram monitorizados
+model Source {
+  id            String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  username      String    @unique
+  active        Boolean   @default(true)
+  lastScrapedAt DateTime? @map("last_scraped_at")
+  lastError     String?   @map("last_error")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  posts         Post[]
+
+  @@map("sources")
+}
+
+// Linha única (id = 1) com as regras globais
+model Settings {
+  id               Int      @id @default(1)
+  requireApproval  Boolean  @default(false) @map("require_approval")
+  maxPerDay        Int      @default(3) @map("max_per_day")              // janela móvel de 24h
+  minHoursBetween  Int      @default(4) @map("min_hours_between")        // intervalo mínimo entre posts
+  scrapeEveryHours Int      @default(6) @map("scrape_every_hours")
+  creditsEnabled   Boolean  @default(true) @map("credits_enabled")
+  creditsTemplate  String   @default("Créditos: @{author}") @map("credits_template")
+  captionSuffix    String   @default("") @map("caption_suffix")          // bloco fixo no fim da legenda
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
 model Post {
   id         String     @id @default(dbgenerated("(gen_random_uuid())::text"))
-  igId       String     @unique @map("ig_id") // shortCode do Reel: garante dedupe, sem loops
+  igId       String     @unique @map("ig_id")
+  sourceId   String?    @map("source_id")
+  source     Source?    @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  author     String?    // @ do autor original (créditos)
   sourceUrl  String?    @map("source_url")
   videoUrl   String     @map("video_url")
   caption    String     @default("")
@@ -29,17 +61,20 @@ model Post {
   attempts   Int        @default(0)
   error      String?
   apifyRunId String?    @map("apify_run_id")
+  postedAt   DateTime?  @map("posted_at")
   createdAt  DateTime   @default(now()) @map("created_at")
   updatedAt  DateTime   @updatedAt @map("updated_at")
   logs       Log[]
 
   @@index([status, createdAt])
+  @@index([postedAt])
   @@map("posts")
 }
 
 model Log {
   id        String   @id @default(dbgenerated("(gen_random_uuid())::text"))
-  level     String   @default("INFO") // INFO | SUCCESS | WARN | ERROR
+  level     String   @default("INFO")   // INFO | SUCCESS | WARN | ERROR
+  kind      String   @default("SYSTEM") // SCRAPE | TIKTOK | SYSTEM
   message   String
   postId    String?  @map("post_id")
   post      Post?    @relation(fields: [postId], references: [id], onDelete: SetNull)
