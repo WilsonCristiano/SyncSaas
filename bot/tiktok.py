@@ -67,6 +67,12 @@ def post_video(video_path: str, caption: str) -> None:
 
             page.locator("input[type='file']").first.set_input_files(video_path)
 
+            try:
+                page.keyboard.press("Escape")
+                page.wait_for_timeout(1000)
+                page.locator("button:has-text('Ativar'), button:has-text('Turn on')").first.click(timeout=2000, force=True)
+                page.wait_for_timeout(500)
+            except: pass
             editor = page.locator("div[contenteditable='true']").first
             editor.wait_for(timeout=90_000)
             editor.click(force=True)
@@ -76,6 +82,12 @@ def post_video(video_path: str, caption: str) -> None:
 
             enable_hd(page)  # obrigatório ANTES de publicar
 
+            try:
+                page.keyboard.press("Escape")
+                page.wait_for_timeout(1000)
+                page.locator("button:has-text('Ativar'), button:has-text('Turn on')").first.click(timeout=2000, force=True)
+                page.wait_for_timeout(500)
+            except: pass
             btn = page.get_by_role("button", name=re.compile(r"^(Publicar|Post)$", re.I)).first
             expect(btn).to_be_enabled(timeout=300_000)  # habilita quando o upload termina
             btn.click(force=True)
