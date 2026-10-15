@@ -15,8 +15,8 @@ def scrape_reels(username: str, limit: int) -> list[dict]:
     if run.get("status") != "SUCCEEDED":
         raise RuntimeError(f"Apify terminou com status {run.get('status')}")
     out = []
-    for it in client.dataset(run["defaultDatasetId"]).list_items().items:
-        ig_id = it.get("shortCode") or it.get("id")
+    for it in client.dataset(run.default_dataset_id).list_items().items:
+        ig_id = it.get("shortCode") or it.id
         if ig_id and it.get("videoUrl"):
             out.append({"ig_id": str(ig_id), "video_url": it["videoUrl"], "caption": it.get("caption") or "",
                         "source_url": it.get("url"), "author": (it.get("ownerUsername") or username).lower()})
