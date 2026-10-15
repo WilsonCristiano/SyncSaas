@@ -36,7 +36,7 @@ def enable_hd(page) -> None:
     """Localiza o switch 'Permitir uploads em alta qualidade (HD)' e garante que está ligado."""
     more = page.get_by_text(re.compile(r"^(Mostrar mais|Show more|More)$", re.I))
     if more.count():
-        more.first.click()
+        more.first.click(force=True)
     label = page.get_by_text(HD_LABEL).first
     label.wait_for(state="attached", timeout=20_000)
     label.scroll_into_view_if_needed()
@@ -69,7 +69,7 @@ def post_video(video_path: str, caption: str) -> None:
 
             editor = page.locator("div[contenteditable='true']").first
             editor.wait_for(timeout=90_000)
-            editor.click()
+            editor.click(force=True)
             page.keyboard.press("Control+A")
             page.keyboard.press("Delete")
             page.keyboard.type(caption, delay=random.randint(15, 45))
@@ -78,9 +78,9 @@ def post_video(video_path: str, caption: str) -> None:
 
             btn = page.get_by_role("button", name=re.compile(r"^(Publicar|Post)$", re.I)).first
             expect(btn).to_be_enabled(timeout=300_000)  # habilita quando o upload termina
-            btn.click()
+            btn.click(force=True)
             try:  # diálogo "Publicar agora" (verificação de direitos autorais ainda em curso)
-                page.get_by_role("button", name=re.compile(r"(Publicar agora|Post now)", re.I)).first.click(timeout=8_000)
+                page.get_by_role("button", name=re.compile(r"(Publicar agora|Post now)", re.I)).first.click(force=True, timeout=8_000)
             except PWTimeout:
                 pass
             page.wait_for_url(re.compile(r"tiktokstudio/content"), timeout=120_000)
