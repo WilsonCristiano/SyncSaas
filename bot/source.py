@@ -11,7 +11,7 @@ ACTOR = "apify/instagram-reel-scraper"
 def scrape_reels(username: str, limit: int) -> list[dict]:
     """1 execução por perfil: o erro de cada fonte fica isolado."""
     client = ApifyClient(APIFY_TOKEN)
-    run = client.actor(ACTOR).call(run_input={"username": [username], "resultsLimit": limit}, wait_secs=600)
+    run = client.actor(ACTOR).call(run_input={"username": [username], "resultsLimit": limit})
     if run.get("status") != "SUCCEEDED":
         raise RuntimeError(f"Apify terminou com status {run.get('status')}")
     out = []
