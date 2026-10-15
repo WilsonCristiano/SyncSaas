@@ -1,0 +1,24 @@
+name: reelsync-bot
+on:
+  repository_dispatch:
+    types: [new-posts]   # disparado por /api/webhook-apify
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */3 * * *" # rede de segurança: drena a fila mesmo sem webhook
+concurrency:
+  group: reelsync-bot
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: bot/requirements.txt }
+      - run: pip install -r bot/requirements.txt && playwright install --with-deps chromium
+      - run: python -m bot.main
+        env:
+          POSTGRES_URL_NON_POOLING: ${{ secrets.POSTGRES_URL_NON_POOLING }}
+          TIKTOK_COOKIES: ${{ secrets.TIKTOK_COOKIES }}
+          CAPTION_TEMPLATE: ${{ vars.CAPTION_TEMPLATE }}

@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Vercel Postgres (Neon): Storage > Create > Postgres > Connect Project injeta estas variáveis.
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")        // pooled (runtime Next.js)
+  directUrl = env("POSTGRES_URL_NON_POOLING")   // direto (db push / bot Python)
+}
+
+enum PostStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+
+  @@map("post_status")
+}
+
+// Nomes snake_case + ids gerados no banco: o bot Python insere via SQL puro.
+model Post {
+  id         String     @id @default(dbgenerated("(gen_random_uuid())::text"))
+  igId       String     @unique @map("ig_id") // shortCode do Reel: garante dedupe, sem loops
+  sourceUrl  String?    @map("source_url")
+  videoUrl   String     @map("video_url")
+  caption    String     @default("")
+  status     PostStatus @default(PENDING)
+  attempts   Int        @default(0)
+  error      String?
+  apifyRunId String?    @map("apify_run_id")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+  logs       Log[]
+
+  @@index([status, createdAt])
+  @@map("posts")
+}
+
+model Log {
+  id        String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  level     String   @default("INFO") // INFO | SUCCESS | WARN | ERROR
+  message   String
+  postId    String?  @map("post_id")
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("logs")
+}
